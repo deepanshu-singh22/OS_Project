@@ -1,0 +1,7 @@
+/home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/intrinsics_gen.dir
+/home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/omp_gen.dir
+/home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/acc_gen.dir
+/home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/RISCVTargetParserTableGen.dir
+/home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/StructLeakPass.dir
+/home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/edit_cache.dir
+/home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/rebuild_cache.dir

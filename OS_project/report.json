@@ -1,0 +1,13 @@
+{
+  "allocations": [
+    { "id": "MemBlock_1", "line": 26, "in_loop": false },
+    { "id": "MemBlock_2", "line": 33, "in_loop": false },
+    { "id": "MemBlock_3", "line": 38, "in_loop": false },
+    { "id": "MemBlock_4", "line": 42, "in_loop": false },
+    { "id": "MemBlock_5", "line": 45, "in_loop": false },
+    { "id": "MemBlock_6", "line": 49, "in_loop": false }
+  ],
+  "frees_count": 1,
+  "total_allocs": 6,
+  "loop_warning": false
+}
