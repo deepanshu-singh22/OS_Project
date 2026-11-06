@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/cse-sdpl/Desktop/OS_project/backend
+CMAKE_SOURCE_DIR = /home/sahil/Desktop/OS_Project/OS_project/backend
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/cse-sdpl/Desktop/OS_project/backend/build
+CMAKE_BINARY_DIR = /home/sahil/Desktop/OS_Project/OS_project/backend/build
 
 # Utility rule file for omp_gen.
 
@@ -78,6 +78,6 @@ CMakeFiles/omp_gen.dir/clean:
 .PHONY : CMakeFiles/omp_gen.dir/clean
 
 CMakeFiles/omp_gen.dir/depend:
-	cd /home/cse-sdpl/Desktop/OS_project/backend/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/cse-sdpl/Desktop/OS_project/backend /home/cse-sdpl/Desktop/OS_project/backend /home/cse-sdpl/Desktop/OS_project/backend/build /home/cse-sdpl/Desktop/OS_project/backend/build /home/cse-sdpl/Desktop/OS_project/backend/build/CMakeFiles/omp_gen.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/sahil/Desktop/OS_Project/OS_project/backend/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/sahil/Desktop/OS_Project/OS_project/backend /home/sahil/Desktop/OS_Project/OS_project/backend /home/sahil/Desktop/OS_Project/OS_project/backend/build /home/sahil/Desktop/OS_Project/OS_project/backend/build /home/sahil/Desktop/OS_Project/OS_project/backend/build/CMakeFiles/omp_gen.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/omp_gen.dir/depend
 

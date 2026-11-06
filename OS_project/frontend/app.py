@@ -5,8 +5,49 @@ import json
 import os
 import time
 import re
-import html  # <--- Added to safely render variables like '->' in Graphviz
+import html
+from pathlib import Path
 from streamlit_ace import st_ace 
+
+# ==========================================
+# LLVM TOOL DISCOVERY
+# ==========================================
+def find_executable(name: str):
+    """Find a tool in PATH or common LLVM install locations."""
+    from shutil import which
+
+    existing = which(name)
+    if existing:
+        return existing
+
+    common_dirs = [
+        "/usr/lib/llvm-18/bin",
+        "/usr/lib/llvm-17/bin",
+        "/usr/lib/llvm-19/bin",
+        "/usr/lib/llvm-20/bin",
+        "/usr/local/bin",
+        "/usr/local/opt/llvm/bin",
+        "/usr/bin",
+        "/bin",
+    ]
+
+    for d in common_dirs:
+        candidate = os.path.join(d, name)
+        if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+
+    return None
+
+# ==========================================
+# PATH CONFIGURATION
+# ==========================================
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+TESTS_DIR = PROJECT_ROOT / "tests"
+BACKEND_DIR = PROJECT_ROOT / "backend"
+PLUGIN_PATH = BACKEND_DIR / "build" / "libStructLeakPass.so"
+REPORT_PATH = PROJECT_ROOT / "report.json"
+
+TESTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -19,9 +60,9 @@ st.markdown("### Static Analysis & Auto-Fix Engine for C/C++ Systems")
 # Auto-cleanup on fresh load
 if "session_started" not in st.session_state:
     st.session_state["session_started"] = True
-    for old_file in ["tests/live_test.c", "tests/live_test.ll", "report.json"]:
-        if os.path.exists(old_file):
-            os.remove(old_file)
+    for old_file in [TESTS_DIR / "live_test.c", TESTS_DIR / "live_test.ll", REPORT_PATH]:
+        if old_file.exists():
+            old_file.unlink()
 
 # ==========================================
 # DEFAULT EDITOR TEMPLATE
@@ -63,26 +104,44 @@ with col2:
 # ==========================================
 if analyze_btn:
     with output_placeholder.container():
+        clang_path = find_executable("clang")
+        opt_path = find_executable("opt")
+
+        if not clang_path or not opt_path:
+            st.error("❌ LLVM toolchain missing. Install `clang` and `opt` first.")
+            st.code(
+                "sudo apt-get update\n"
+                "sudo apt-get install -y build-essential cmake clang llvm llvm-18 llvm-18-dev llvm-18-tools graphviz\n"
+                "python3 -m venv .venv\n"
+                ". .venv/bin/activate\n"
+                "python -m pip install streamlit streamlit-ace graphviz",
+                language="bash"
+            )
+            st.stop()
+
         with st.spinner("Compiling and traversing Control Flow Graph..."):
             
-            for file_to_clean in ["tests/live_test.c", "tests/live_test.ll", "report.json"]:
-                if os.path.exists(file_to_clean):
-                    os.remove(file_to_clean)
+            for file_to_clean in [TESTS_DIR / "live_test.c", TESTS_DIR / "live_test.ll", REPORT_PATH]:
+                if file_to_clean.exists():
+                    file_to_clean.unlink()
             
-            with open("tests/live_test.c", "w") as f:
-                f.write(user_code)
+            source_path = TESTS_DIR / "live_test.c"
+            ll_path = TESTS_DIR / "live_test.ll"
+            source_path.write_text(user_code)
             
             start_time = time.perf_counter()
             
             clang_proc = subprocess.run(
-                ["clang", "-g", "-O1", "-Xclang", "-disable-llvm-passes", "-S", "-emit-llvm", "tests/live_test.c", "-o", "tests/live_test.ll"],
-                capture_output=True, text=True
+                [clang_path, "-g", "-O1", "-Xclang", "-disable-llvm-passes", "-S", "-emit-llvm", str(source_path), "-o", str(ll_path)],
+                capture_output=True, text=True,
+                cwd=str(PROJECT_ROOT)
             )
             
             if clang_proc.returncode == 0:
                 opt_proc = subprocess.run(
-                    ["opt", "-load-pass-plugin=./backend/build/libStructLeakPass.so", "-passes=struct-leak-pass", "-disable-output", "tests/live_test.ll"],
-                    capture_output=True, text=True
+                    [opt_path, f"-load-pass-plugin={PLUGIN_PATH}", "-passes=struct-leak-pass", "-disable-output", str(ll_path)],
+                    capture_output=True, text=True,
+                    cwd=str(PROJECT_ROOT)
                 )
             
             end_time = time.perf_counter()
@@ -91,12 +150,12 @@ if analyze_btn:
             if clang_proc.returncode != 0:
                 st.error("❌ Compilation Error in your C code!")
                 st.code(clang_proc.stderr, language="bash")
-            elif not os.path.exists("report.json"):
+            elif not REPORT_PATH.exists():
                 st.warning(f"⚠️ Analysis finished in {execution_time:.3f}s, but no memory tracking report was generated.")
             else:
                 st.success(f"✅ Analysis Completed in **{execution_time:.3f} seconds**")
                 
-                with open("report.json", "r") as f:
+                with open(REPORT_PATH, "r") as f:
                     data = json.load(f)
                 
                 with st.expander("📄 View Raw Engine Report (JSON)"):
@@ -123,7 +182,6 @@ if analyze_btn:
                     line_num = alloc.get("line", "?")
                     var_name = "Unknown"
                     
-                    # Robust Variable Extraction (Checks the exact line and nearby lines just in case)
                     if isinstance(line_num, int):
                         start_idx = max(0, line_num - 2)
                         end_idx = min(len(code_lines), line_num + 1)
@@ -134,10 +192,7 @@ if analyze_btn:
                                 var_name = var_part.split()[-1].replace("*", "")
                                 break
                     
-                    # Escape HTML characters to prevent Graphviz crashing on '->'
                     safe_var_name = html.escape(var_name)
-                    
-                    # Render the Node with the Variable Name
                     label = f"<<B>{node_id}</B><BR/><FONT POINT-SIZE='11' COLOR='#0044cc'>Var: <B>{safe_var_name}</B></FONT><BR/><FONT POINT-SIZE='9'>Line: {line_num}</FONT>>"
                     
                     graph.node(node_id, label, shape='folder', style='filled,bold', fillcolor=node_color, color=border_color)
@@ -151,7 +206,6 @@ if analyze_btn:
                 freed_vars = []
                 free_lines_map = {}
                 
-                # 1. Parse code to find Allocs and Frees accurately
                 for idx, line in enumerate(code_lines):
                     if "malloc(" in line and "=" in line:
                         var_name = line.split("=")[0].strip().split()[-1].replace("*", "")
@@ -166,8 +220,6 @@ if analyze_btn:
                                 free_lines_map[var_name] = idx + 1
 
                 missing_frees = [var for var in allocated_vars if var not in freed_vars]
-                
-                # 2. Check for Use-After-Free (Wrong Order)
                 order_errors = []
                 for i, var1 in enumerate(freed_vars):
                     for var2 in freed_vars[i+1:]:
